@@ -26,7 +26,7 @@ This repository contains:
 ## 🖥️ **Live Demo**
 
 👉 **Hosted on Netlify:**
-**[http://thunderous-choux-b98c69.netlify.app/](http://thunderous-choux-b98c69.netlify.app/)**
+**[http://thunderous-choux-b98c69.netlify.app/](https://eyaiprototype.netlify.app/)**
 
 ---
 
