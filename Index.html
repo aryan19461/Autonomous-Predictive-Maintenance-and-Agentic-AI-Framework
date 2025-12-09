@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autonomous Predictive Maintenance Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        .card { 
+            background: white; 
+            border-radius: 1rem; 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); 
+            transition: all 0.5s ease-in-out;
+            border: 1px solid transparent;
+        }
+        .alert-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .6; }
+        }
+        .progress-bar { transition: width 0.5s ease-in-out; }
+
+        /* Dynamic Health Status Border Classes */
+        .health-optimal { border-color: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
+        .health-degrading { border-color: #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+        .health-critical { border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.7); }
+        
+        /* Agent Highlighting */
+        .agent-active { 
+            border: 3px solid #10b981; /* Emerald */
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.7);
+            transition: all 0.5s;
+        }
+
+        #sensor-chart-canvas {
+            display: block;
+            background-color: #fff;
+            border-radius: 0.75rem;
+        }
+        
+        /* Loading spinner for Gemini calls */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border-left-color: #4f46e5;
+            animation: spin 1s ease infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <header class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3 text-indigo-600"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+            Autonomous Predictive Maintenance Model
+        </h1>
+        <p class="text-gray-600">Simulating the Master-Worker Agent Framework and Automated Service Feedback Loop.</p>
+    </header>
+    
+    <!-- Vehicle Owner Details -->
+    <div class="card p-4 mb-8">
+        <h2 class="text-xl font-semibold mb-3 text-cyan-700 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 17H12"/></svg>
+            Vehicle Owner & Service Profile
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-700">
+            <div>
+                <p class="text-gray-500 font-medium">Owner Name</p>
+                <p class="font-bold">Mr. A. Sharma</p>
+            </div>
+            <div>
+                <p class="text-gray-500 font-medium">Vehicle ID</p>
+                <p class="font-bold">MH12AB3456</p>
+            </div>
+            <div>
+                <p class="text-gray-500 font-medium">Last Service</p>
+                <p class="font-bold">2024-09-15 (15,000 mi)</p>
+            </div>
+            <div>
+                <p class="text-gray-500 font-medium">Warranty Status</p>
+                <p class="font-bold text-green-600">Active (10k mi remaining)</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Master Agent and Vehicle Status (Left Column) -->
+        <div class="lg:col-span-2 space-y-8">
+            
+            <!-- Vehicle Health & Master Agent Monitoring -->
+            <div id="monitoring-card" class="card p-6 border-2 border-green-500 health-optimal">
+                <h2 class="text-xl font-semibold mb-4 text-indigo-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M20 10.5V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8.5"></path><path d="M15 2H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1Z"></path><path d="M22 6c-3 0-5 2-5 5v5a2 2 0 0 1-2 2H7"></path></svg>
+                    Master Agent Monitoring: Vehicle MH12AB3456
+                </h2>
+                
+                <div class="flex flex-col md:flex-row gap-6">
+                    <!-- Health Score -->
+                    <div class="w-full md:w-1/3 text-center p-4 border rounded-xl bg-gray-50 shadow-inner">
+                        <div class="text-5xl font-extrabold" id="health-score-display">100</div>
+                        <p class="text-sm text-gray-500 mt-1">Vehicle Health Score</p>
+                        <div id="status-label" class="mt-2 text-sm font-medium text-green-700 bg-green-100 py-1 rounded-full">Optimal</div>
+                        
+                        <!-- Emergency Alert Button -->
+                        <button id="emergency-alert-btn" class="mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg transition duration-150 shadow-lg hover:shadow-xl text-sm disabled:opacity-50" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="inline w-4 h-4 mr-1 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                            EMERGENCY ALERT (Disabled)
+                        </button>
+                    </div>
+                    
+                    <!-- Sensor Data Simulation (Data Analysis Agent) -->
+                    <div id="analysis-agent-panel" class="w-full md:w-2/3 space-y-3 p-3 rounded-lg">
+                        <h3 class="text-lg font-medium text-gray-700 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M3 3v18h18"/><path d="m18 8-4 4-2-2-5 5"/></svg>
+                            Key Sensor Data (Data Analysis Agent)
+                        </h3>
+                        <div class="space-y-1">
+                            <p class="text-sm flex justify-between">Engine Vibration (μV): <span id="vibration-value" class="font-semibold text-gray-900">50</span></p>
+                            <div class="h-2 bg-gray-200 rounded-full"><div id="vibration-progress" class="progress-bar h-2 bg-green-500 rounded-full" style="width: 5%;"></div></div>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-sm flex justify-between">Transmission Temp (°C): <span id="temp-value" class="font-semibold text-gray-900">80</span></p>
+                            <div class="h-2 bg-gray-200 rounded-full"><div id="temp-progress" class="progress-bar h-2 bg-green-500 rounded-full" style="width: 50%;"></div></div>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-sm flex justify-between">Oil Pressure (psi): <span id="pressure-value" class="font-semibold text-gray-900">70</span></p>
+                            <div class="h-2 bg-gray-200 rounded-full"><div id="pressure-progress" class="progress-bar h-2 bg-green-500 rounded-full" style="width: 70%;"></div></div>
+                        </div>
+                        
+                        <!-- Real-Time Data Stream Log -->
+                        <h3 class="text-lg font-medium text-gray-700 pt-4 mt-4 border-t border-gray-200 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M12 2v20"/><path d="M17 5H7"/><path d="M17 19H7"/><path d="M17 12H7"/></svg>
+                            Real-Time Data Stream
+                        </h3>
+                        <div class="bg-gray-100 p-3 rounded-lg border h-20 overflow-y-auto text-xs font-mono">
+                            <ul id="data-stream-log" class="space-y-0.5">
+                                <li class="text-gray-500">[System]: Telematics link established...</li>
+                            </ul>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sensor Data Visualization (New Card for Graphics) -->
+            <div class="card p-6">
+                <h2 class="text-xl font-semibold mb-4 text-purple-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.6 5.7-4.3-4.3-6.4 6.3"/></svg>
+                    Real-Time Sensor Graph (Vibration & Temperature)
+                </h2>
+                <canvas id="sensor-chart-canvas" width="800" height="200" class="w-full"></canvas>
+                <div class="mt-4 flex gap-4 text-sm font-medium">
+                    <span class="flex items-center"><span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>Vibration (μV)</span>
+                    <span class="flex items-center"><span class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>Temperature (°C)</span>
+                </div>
+            </div>
+
+            <!-- Diagnosis and Proactive Service (Diagnosis Agent) -->
+            <div id="diagnosis-card" class="card p-6 border-l-4 border-yellow-500 hidden">
+                <h2 class="text-xl font-semibold mb-4 flex items-center text-yellow-700">
+                    <svg class="w-6 h-6 mr-2 alert-pulse text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    PREDICTIVE DIAGNOSIS ALERT (Diagnosis Agent)
+                </h2>
+                
+                <div class="flex justify-between items-start mb-4">
+                    <p id="diagnosis-message" class="text-lg text-gray-800 font-medium"></p>
+                    <button id="llm-diagnosis-btn" class="ml-4 flex-shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition duration-150 shadow-md disabled:opacity-50">
+                        ✨ Explain Diagnosis
+                    </button>
+                </div>
+
+                <!-- LLM Generated Explanation -->
+                <div id="llm-explanation" class="p-3 mb-4 bg-purple-50 border-l-4 border-purple-400 rounded-lg text-sm text-gray-700 hidden">
+                    <p class="font-bold text-purple-700 mb-1">AI-Powered Owner Explanation:</p>
+                    <div id="explanation-content"></div>
+                </div>
+                
+                <div class="flex flex-wrap gap-4 items-center text-sm mb-4">
+                    <p class="text-gray-600 bg-red-50 p-2 rounded-lg">Probability: <span id="probability-value" class="text-red-700 font-bold"></span></p>
+                    <p class="text-gray-600 bg-yellow-50 p-2 rounded-lg">Component: <span id="component-value" class="font-semibold text-gray-800"></span></p>
+                </div>
+
+                <!-- Immediate Action Plan -->
+                <div class="border-t pt-4">
+                    <h3 class="text-base font-semibold text-gray-700 flex items-center mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-indigo-500"><path d="M12 14v4"/><path d="M12 2a10 10 0 0 0-7 3h14a10 10 0 0 0-7-3Z"/><path d="M16 7l-2 2h-4L8 7"/></svg>
+                        Immediate Recommended Action (Master Agent Tip)
+                    </h3>
+                    <div id="action-plan" class="p-3 bg-indigo-50 border-l-4 border-indigo-400 rounded-lg text-sm text-gray-700">
+                        <!-- Action plan generated here by JS -->
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- Customer and Manufacturing Agents (Right Column) -->
+        <div class="lg:col-span-1 space-y-8">
+            
+            <!-- Customer Engagement & Scheduling Agent -->
+            <div id="engagement-card" class="card p-6 h-full flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xl font-semibold mb-4 text-teal-700 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 17H12"/></svg>
+                        Customer Engagement & Scheduling Agents
+                    </h2>
+                </div>
+                
+                <div id="customer-state-optimal" class="text-center py-10">
+                    <p class="text-gray-500">Awaiting Agent Trigger...</p>
+                    <button id="trigger-maintenance-btn" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 shadow-md hover:shadow-lg">
+                        Simulate High Wear (Trigger Agent)
+                    </button>
+                </div>
+
+                <div id="customer-state-triggered" class="space-y-4 hidden">
+                    <div id="engagement-message" class="p-4 bg-teal-50 border-l-4 border-teal-500 rounded-lg text-sm text-gray-700">
+                        <!-- Engagement message generated here -->
+                    </div>
+                    <div class="text-center space-y-2">
+                        <button id="schedule-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md">
+                            Confirm Proactive Service Visit (Schedule Agent Action)
+                        </button>
+                    </div>
+                </div>
+
+                <div id="customer-state-scheduled" class="space-y-4 hidden">
+                    <div class="p-4 bg-lime-50 border-l-4 border-lime-500 rounded-lg text-sm text-gray-700">
+                        <p class="font-semibold">Service Confirmed!</p>
+                        <p>The Scheduling Agent has autonomously booked the necessary service with spare parts reserved.</p>
+                    </div>
+                    <button id="reset-btn" class="w-full bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-lg transition duration-150">
+                        Reset Simulation
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manufacturing Quality Insights Log (Bottom Full Width) -->
+        <div class="lg:col-span-3 card p-6">
+            <div class="flex justify-between items-start mb-4">
+                <h2 class="text-xl font-semibold text-red-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M12 21a9 9 0 0 0 9-9c0-6.21-3.6-11.5-9-11.5S3 5.79 3 12a9 9 0 0 0 9 9Z"/><path d="M12 7v5l2.5 1.5"/></svg>
+                    Manufacturing Quality Insights Agent: Feedback Loop Log
+                </h2>
+                <button id="llm-insight-btn" class="ml-4 flex-shrink-0 bg-fuchsia-600 hover:bg-fuchsia-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition duration-150 shadow-md disabled:opacity-50" disabled>
+                    ✨ Generate Actionable Insight
+                </button>
+            </div>
+            
+            <div id="insights-log-panel" class="bg-gray-100 p-4 rounded-lg h-48 overflow-y-auto text-sm font-mono">
+                <ul id="feedback-log" class="space-y-1">
+                    <li class="text-gray-500">[System]: Monitoring initial quality baseline from Plant A (Batch 2024-Q1)...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Global Constants
+        const API_KEY = ""; // Required for Gemini API calls
+        const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
+        const MAX_HISTORY_POINTS = 50; 
+        const HIGH_VIBRATION_THRESHOLD = 150;
+        const HIGH_TEMP_THRESHOLD = 100;
+        const LOW_OIL_PRESSURE_THRESHOLD = 50; 
+        const MAX_VIBRATION = 300;
+        const MAX_TEMP = 150;
+        const MAX_PRESSURE = 100;
+        
+        // DOM Elements
+        const healthScoreDisplay = document.getElementById('health-score-display');
+        const statusLabel = document.getElementById('status-label');
+        const vibrationValue = document.getElementById('vibration-value');
+        const tempValue = document.getElementById('temp-value');
+        const pressureValue = document.getElementById('pressure-value');
+        const vibrationProgress = document.getElementById('vibration-progress');
+        const tempProgress = document.getElementById('temp-progress');
+        const pressureProgress = document.getElementById('pressure-progress');
+        const diagnosisCard = document.getElementById('diagnosis-card');
+        const diagnosisMessage = document.getElementById('diagnosis-message');
+        const probabilityValue = document.getElementById('probability-value');
+        const componentValue = document.getElementById('component-value');
+        const actionPlan = document.getElementById('action-plan'); 
+        const triggerBtn = document.getElementById('trigger-maintenance-btn');
+        const scheduleBtn = document.getElementById('schedule-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const customerStateOptimal = document.getElementById('customer-state-optimal');
+        const customerStateTriggered = document.getElementById('customer-state-triggered');
+        const customerStateScheduled = document.getElementById('customer-state-scheduled');
+        const engagementMessage = document.getElementById('engagement-message');
+        const feedbackLog = document.getElementById('feedback-log');
+        const dataStreamLog = document.getElementById('data-stream-log'); 
+        const monitoringCard = document.getElementById('monitoring-card');
+        const chartCanvas = document.getElementById('sensor-chart-canvas');
+        const ctx = chartCanvas.getContext('2d');
+        const emergencyAlertBtn = document.getElementById('emergency-alert-btn'); 
+        const llmDiagnosisBtn = document.getElementById('llm-diagnosis-btn');
+        const llmExplanationDiv = document.getElementById('llm-explanation');
+        const explanationContent = document.getElementById('explanation-content');
+        const llmInsightBtn = document.getElementById('llm-insight-btn');
+        
+        // Agent Panel Elements for Highlighting
+        const analysisPanel = document.getElementById('analysis-agent-panel');
+        const diagnosisPanel = document.getElementById('diagnosis-card');
+        const engagementPanel = document.getElementById('engagement-card');
+        const insightsPanel = document.getElementById('insights-log-panel');
+
+        // State variables
+        let isCritical = false;
+        let sensorInterval = null;
+        let currentVibration = 50;
+        let currentTemp = 80;
+        let currentOilPressure = 70; 
+        let predictedFailureComponent = "";
+        let predictedFailureProb = 0;
+        
+        // Data history for charting
+        let vibrationHistory = [];
+        let tempHistory = [];
+
+
+        // --- GEMINI API UTILITIES ---
+
+        /**
+         * Fetches a response from the Gemini API with exponential backoff.
+         * @param {string} userQuery - The main query text for the model.
+         * @param {string} systemPrompt - The instruction to set the model's persona/role.
+         * @param {boolean} useGrounding - Whether to use Google Search for grounding.
+         * @param {number} retries - Current retry attempt count.
+         * @returns {Promise<string>} The generated text response.
+         */
+        async function fetchGeminiResponse(userQuery, systemPrompt, useGrounding = true, retries = 0) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`;
+            const maxRetries = 5;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                tools: useGrounding ? [{ "google_search": {} }] : undefined,
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.status === 429 && retries < maxRetries) {
+                    const delay = Math.pow(2, retries) * 1000 + Math.random() * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return fetchGeminiResponse(userQuery, systemPrompt, useGrounding, retries + 1);
+                }
+
+                if (!response.ok) {
+                    throw new Error(`API call failed with status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (!text) {
+                     return "The AI agent could not generate a meaningful insight. Please check the model status.";
+                }
+                
+                return text;
+
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                return `[Error]: AI Generation failed: ${error.message}`;
+            }
+        }
+
+        // --- UI UTILITIES ---
+
+        /**
+         * Highlights the currently active agent panel by applying the 'agent-active' class.
+         * @param {HTMLElement} activePanel - The panel element to highlight.
+         */
+        function setActiveAgentPanel(activePanel) {
+            [analysisPanel, diagnosisPanel, engagementPanel, insightsPanel].forEach(panel => {
+                panel.classList.remove('agent-active');
+            });
+            if (activePanel) {
+                activePanel.classList.add('agent-active');
+            }
+        }
+        
+        /**
+         * Updates the Master Agent card's border/shadow based on health score.
+         * @param {number} health 
+         */
+        function updateMonitoringCardStyle(health) {
+            monitoringCard.classList.remove('health-optimal', 'health-degrading', 'health-critical');
+            if (health > 80) {
+                monitoringCard.classList.add('health-optimal');
+            } else if (health > 50) {
+                monitoringCard.classList.add('health-degrading');
+            } else {
+                monitoringCard.classList.add('health-critical');
+            }
+        }
+
+        // --- LOGGING UTILITIES ---
+
+        function logFeedback(message, color = 'text-gray-800') {
+            const li = document.createElement('li');
+            const timestamp = new Date().toLocaleTimeString();
+            li.innerHTML = `<span class="text-gray-400">[${timestamp}]</span> ${message}`;
+            li.className = color;
+            feedbackLog.prepend(li);
+        }
+        
+        function logDataStream(vibration, temperature, pressure) {
+            const li = document.createElement('li');
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, second: '2-digit' }); 
+            li.innerHTML = `<span class="text-gray-400">[${timestamp}]</span> VIB: ${vibration.toFixed(1)}μV, TEMP: ${temperature.toFixed(1)}°C, OIL: ${pressure.toFixed(1)}psi`;
+            dataStreamLog.prepend(li);
+            if (dataStreamLog.children.length > 10) {
+                dataStreamLog.removeChild(dataStreamLog.lastChild);
+            }
+        }
+
+        // --- CHARTING UTILITIES ---
+
+        /**
+         * Draws the real-time line chart on the canvas.
+         */
+        function drawChart() {
+            const width = chartCanvas.width;
+            const height = chartCanvas.height;
+            const padding = 20;
+            const chartHeight = height - padding * 2;
+            const chartWidth = width - padding * 2;
+
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw X and Y Axes (simple grid)
+            ctx.strokeStyle = '#e5e7eb'; // Gray-200
+            ctx.lineWidth = 1;
+            
+            // Draw horizontal lines (representing normalized 0, 50, 100 max)
+            for (let i = 0; i <= 4; i++) {
+                const y = padding + (chartHeight / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width - padding, y);
+                ctx.stroke();
+            }
+
+            // Draw line for Vibration data
+            drawLine(vibrationHistory, MAX_VIBRATION, '#ef4444', 3); // Red
+            
+            // Draw line for Temperature data
+            drawLine(tempHistory, MAX_TEMP, '#f59e0b', 3); // Yellow
+        }
+
+        /**
+         * Generic function to draw a single line on the canvas.
+         * @param {Array<number>} history - The array of data points.
+         * @param {number} maxVal - The maximum expected value for scaling.
+         * @param {string} color - The stroke color.
+         * @param {number} lineWidth - The line thickness.
+         */
+        function drawLine(history, maxVal, color, lineWidth) {
+            if (history.length < 2) return;
+
+            const width = chartCanvas.width;
+            const height = chartCanvas.height;
+            const padding = 20;
+            const chartHeight = height - padding * 2;
+            const chartWidth = width - padding * 2;
+            // The step calculation is simplified by using the actual length of the history array
+            const getX = (i) => padding + (i / (history.length > 1 ? history.length - 1 : 1)) * chartWidth;
+            
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            
+            ctx.moveTo(getX(0), height - padding - (history[0] / maxVal) * chartHeight);
+
+            for (let i = 1; i < history.length; i++) {
+                const x = getX(i);
+                const y = height - padding - (history[i] / maxVal) * chartHeight;
+                ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        // --- AGENT FUNCTIONS ---
+
+        /**
+         * MASTER AGENT: Updates the Vehicle Health Score and Status Label.
+         */
+        function updateHealthScore() {
+            setActiveAgentPanel(analysisPanel); 
+            
+            // Health Weights (Vibration: 30%, Temp: 40%, Oil Pressure: 30%)
+            const vibWeight = 0.3;
+            const tempWeight = 0.4;
+            const oilWeight = 0.3;
+            
+            // Normalized values (0 to 1, where 1 is worst case)
+            const normalizedVib = Math.min(currentVibration, MAX_VIBRATION) / MAX_VIBRATION;
+            const normalizedTemp = Math.min(currentTemp, MAX_TEMP) / MAX_TEMP;
+            
+            // Oil Pressure is inverse: high pressure is good (0), low pressure is bad (1)
+            const normalizedOil = 1 - (Math.max(currentOilPressure, LOW_OIL_PRESSURE_THRESHOLD) / MAX_PRESSURE); 
+            
+            let health = 100 - ((normalizedVib * vibWeight) + (normalizedTemp * tempWeight) + (normalizedOil * oilWeight)) * 100;
+            health = Math.max(0, Math.round(health)); 
+
+            healthScoreDisplay.textContent = health;
+            
+            // Dynamic color/class assignment based on health
+            let statusText;
+            let statusClass;
+            if (health > 80) {
+                statusText = 'Optimal';
+                statusClass = 'mt-2 text-sm font-medium text-green-700 bg-green-100 py-1 rounded-full';
+            } else if (health > 50) {
+                statusText = 'Degradation Detected';
+                statusClass = 'mt-2 text-sm font-medium text-yellow-700 bg-yellow-100 py-1 rounded-full';
+            } else {
+                statusText = 'Critical Risk';
+                statusClass = 'mt-2 text-sm font-medium text-red-700 bg-red-100 py-1 rounded-full alert-pulse';
+            }
+
+            statusLabel.textContent = statusText;
+            statusLabel.className = statusClass;
+            
+            updateMonitoringCardStyle(health); // Apply dynamic card style
+
+            // Check for critical thresholds across all sensors
+            const isVibCritical = currentVibration > HIGH_VIBRATION_THRESHOLD * 0.9;
+            const isTempCritical = currentTemp > HIGH_TEMP_THRESHOLD * 0.9;
+            const isOilCritical = currentOilPressure < LOW_OIL_PRESSURE_THRESHOLD * 1.1;
+
+            if ((isVibCritical || isTempCritical || isOilCritical) && !isCritical) {
+                isCritical = true;
+                logFeedback("Master Agent: Critical sensor thresholds crossed. Triggering Diagnosis Agent...", "text-orange-600");
+                runDiagnosisAgent();
+            }
+            
+            // Enable/Disable Emergency Alert Button based on critical state
+            emergencyAlertBtn.disabled = !isCritical;
+            if(isCritical) {
+                emergencyAlertBtn.textContent = 'EMERGENCY ALERT (Active)';
+                emergencyAlertBtn.classList.add('alert-pulse');
+            } else {
+                emergencyAlertBtn.textContent = 'EMERGENCY ALERT (Disabled)';
+                emergencyAlertBtn.classList.remove('alert-pulse');
+            }
+        }
+
+        /**
+         * DATA ANALYSIS AGENT: Simulates the processing of incoming sensor data.
+         */
+        function updateSensorData() {
+            vibrationValue.textContent = currentVibration.toFixed(1);
+            tempValue.textContent = currentTemp.toFixed(1);
+            pressureValue.textContent = currentOilPressure.toFixed(1);
+            
+            logDataStream(currentVibration, currentTemp, currentOilPressure);
+
+            // Update history arrays
+            vibrationHistory.push(currentVibration);
+            tempHistory.push(currentTemp);
+            if (vibrationHistory.length > MAX_HISTORY_POINTS) vibrationHistory.shift();
+            if (tempHistory.length > MAX_HISTORY_POINTS) tempHistory.shift();
+            
+            // Draw chart
+            drawChart();
+
+
+            // Progress Bar Logic (Vibration & Temp: higher is worse; Pressure: lower is worse)
+            
+            // Vibration (Scale 0-300μV)
+            const vibPct = Math.min(currentVibration / MAX_VIBRATION * 100, 100);
+            vibrationProgress.style.width = `${vibPct}%`;
+            vibrationProgress.className = 'progress-bar h-2 rounded-full ' + (vibPct > 60 ? 'bg-red-600' : vibPct > 30 ? 'bg-yellow-500' : 'bg-green-500');
+
+            // Temperature (Scale 0-150°C)
+            const tempPct = Math.min(currentTemp / MAX_TEMP * 100, 100);
+            tempProgress.style.width = `${tempPct}%`;
+            tempProgress.className = 'progress-bar h-2 rounded-full ' + (tempPct > 60 ? 'bg-red-600' : tempPct > 30 ? 'bg-yellow-500' : 'bg-green-500');
+
+            // Oil Pressure (Scale 100psi normal. Low pressure is bad. Show RED when below ~60%)
+            // Progress bar represents health: 100% is 100psi, 0% is 0psi.
+            const pressurePct = Math.min(currentOilPressure / MAX_PRESSURE * 100, 100);
+            pressureProgress.style.width = `${pressurePct}%`;
+            // Reverse color logic: low % (low pressure) is red
+            pressureProgress.className = 'progress-bar h-2 rounded-full ' + (pressurePct < 50 ? 'bg-red-600' : pressurePct < 70 ? 'bg-yellow-500' : 'bg-green-500');
+
+            updateHealthScore();
+        }
+
+        /**
+         * DIAGNOSIS AGENT: Uses the sensor data to calculate probability of failure and provide immediate action.
+         */
+        function runDiagnosisAgent() {
+            clearInterval(sensorInterval);
+
+            setActiveAgentPanel(diagnosisPanel);
+            
+            // Simulation of ML model prediction using all three factors
+            const vibFactor = Math.min(currentVibration, MAX_VIBRATION) / MAX_VIBRATION;
+            const tempFactor = Math.min(currentTemp, MAX_TEMP) / MAX_TEMP;
+            const pressureFactor = 1 - (Math.max(currentOilPressure, LOW_OIL_PRESSURE_THRESHOLD) / MAX_PRESSURE); 
+
+            // Weighted probability calculation
+            const rawProb = (vibFactor * 0.4 + tempFactor * 0.4 + pressureFactor * 0.2) * 1.5;
+            predictedFailureProb = Math.min(rawProb, 0.99); 
+            const formattedProb = (predictedFailureProb * 100).toFixed(1) + '%';
+            
+            // Diagnosis: Failure is primarily driven by temperature and low pressure, pointing to a lubrication/bearing issue.
+            predictedFailureComponent = "Engine Lubrication System & Bearing";
+            
+            // IMMEDIATE ACTION PLAN LOGIC
+            let immediateAction;
+            
+            if (currentOilPressure < LOW_OIL_PRESSURE_THRESHOLD && currentVibration > HIGH_VIBRATION_THRESHOLD) {
+                immediateAction = `
+                    <p class="font-bold text-red-700">CRITICAL LUBRICATION FAILURE RISK!</p>
+                    <p>Immediately advise the driver to pull over safely and **turn the engine OFF** to prevent catastrophic engine failure due to severe oil starvation and excessive component wear (high vibration).</p>
+                    <p class="mt-2">Simultaneously, the Scheduling Agent must prioritize an **immediate tow service** and replacement component allocation.</p>
+                `;
+            } else if (currentVibration > HIGH_VIBRATION_THRESHOLD * 1.5) {
+                immediateAction = `
+                    <p class="font-bold">SEVERE VIBRATION ANOMALY.</p>
+                    <p>Recommend reducing vehicle speed immediately and limiting high-RPM operation. Schedule service within 24 hours to inspect engine mounts or primary rotating assembly.</p>
+                `;
+            } else {
+                immediateAction = `
+                    <p class="font-bold">PROACTIVE MONITORING.</p>
+                    <p>The system is generating a high-confidence diagnosis. No immediate driver action is required, but preemptive service must be scheduled within 72 hours to prevent performance degradation.</p>
+                `;
+            }
+
+
+            diagnosisCard.classList.remove('hidden');
+            llmDiagnosisBtn.disabled = false; // Enable LLM button
+            diagnosisMessage.textContent = `Predicted failure of the ${predictedFailureComponent} component is imminent. Immediate preemptive service is required due to severe data anomalies.`;
+            probabilityValue.textContent = formattedProb;
+            componentValue.textContent = predictedFailureComponent;
+            actionPlan.innerHTML = immediateAction; // Update the action plan section
+            llmExplanationDiv.classList.add('hidden'); // Hide previous explanation
+            explanationContent.textContent = ''; // Clear content
+
+            logFeedback(`Diagnosis Agent: Predicted ${predictedFailureComponent} failure with ${formattedProb}. Triggering Customer Engagement.`, "text-red-700 font-bold");
+
+            runCustomerEngagementAgent(predictedFailureComponent, predictedFailureProb);
+        }
+
+        /**
+         * LLM-POWERED FEATURE 1: Generates a customer-friendly explanation of the diagnosis.
+         */
+        async function generateLlmDiagnosis() {
+            llmDiagnosisBtn.disabled = true;
+            llmDiagnosisBtn.innerHTML = '<span class="spinner"></span> Generating...';
+            llmExplanationDiv.classList.remove('hidden');
+            explanationContent.innerHTML = 'Analyzing sensor data for explanation...';
+
+            const systemPrompt = "You are a friendly and highly knowledgeable technical analyst from a vehicle telematics company. Your goal is to explain a complex vehicle failure diagnosis in a simple, clear, single paragraph suitable for a non-expert vehicle owner. Focus on *what* failed and *why* it is urgent (use analogies if helpful).";
+            
+            const userQuery = `The vehicle is showing critical data: high vibration (${currentVibration.toFixed(1)}μV), high temperature (${currentTemp.toFixed(1)}°C), and critically low oil pressure (${currentOilPressure.toFixed(1)}psi). The predicted component failure is the ${predictedFailureComponent}. Explain this situation and why the immediate action to stop the engine is necessary.`;
+
+            const text = await fetchGeminiResponse(userQuery, systemPrompt, true);
+            
+            explanationContent.textContent = text;
+            llmDiagnosisBtn.innerHTML = '✨ Explain Diagnosis';
+            llmDiagnosisBtn.disabled = false; 
+        }
+
+        /**
+         * EMERGENCY RESPONSE AGENT: Simulates immediate alert to safety personnel and contacts.
+         */
+        function triggerEmergencyAlert() {
+            if (!isCritical) return;
+
+            // Disable button immediately to prevent multiple triggers
+            emergencyAlertBtn.disabled = true;
+            emergencyAlertBtn.textContent = 'ALERT SENT!';
+            emergencyAlertBtn.classList.remove('alert-pulse', 'bg-red-600', 'hover:bg-red-700');
+            emergencyAlertBtn.classList.add('bg-gray-400');
+            
+            logFeedback(`🚨 EMERGENCY RESPONSE AGENT: CRITICAL FAILURE ACTIVATED!`, "text-red-900 font-extrabold bg-red-200 p-1 rounded");
+            logFeedback(`Emergency Agent: Notifying Owner's primary contacts (Jane Sharma, 555-0101).`, "text-red-700");
+            logFeedback(`Emergency Agent: Dispatching nearest Roadside Assistance / Tow Service to current GPS location.`, "text-red-700");
+            logFeedback(`Emergency Agent: Logging incident with Fleet Telematics and creating high-priority service ticket.`, "text-red-700");
+
+            // Stop further sensor updates immediately
+            clearInterval(sensorInterval);
+        }
+
+        /**
+         * CUSTOMER ENGAGEMENT AGENT: Composes a personalized, proactive service message.
+         */
+        function runCustomerEngagementAgent(component, probability) {
+            setActiveAgentPanel(engagementPanel);
+            diagnosisCard.classList.remove('agent-active'); 
+
+            customerStateOptimal.classList.add('hidden');
+            customerStateTriggered.classList.remove('hidden');
+            
+            engagementMessage.innerHTML = `
+                <p class="font-bold">Proactive Alert for Mr. Sharma (Customer Engagement Agent)</p>
+                <p>Hello! Our system detected an issue with your vehicle's <span class="font-bold">${component}</span>. We've noticed critical changes in sensor data (increased vibration, high temp, and **low oil pressure**), indicating a high risk of critical failure (${(probability * 100).toFixed(1)}%).</p>
+                <p class="mt-2">To prevent an unexpected breakdown, we strongly recommend scheduling a free, preemptive service now. Would you like to proceed?</p>
+            `;
+
+            logFeedback("Customer Engagement Agent: Sent proactive communication to customer with personalized risk assessment.", "text-teal-700");
+        }
+
+        /**
+         * SCHEDULING AGENT: Simulates autonomous booking.
+         */
+        function runSchedulingAgent() {
+            setActiveAgentPanel(engagementPanel); 
+
+            customerStateTriggered.classList.add('hidden');
+            customerStateScheduled.classList.remove('hidden');
+            llmInsightBtn.disabled = false; // Enable the Manufacturing LLM button
+
+            const serviceTime = new Date();
+            serviceTime.setDate(serviceTime.getDate() + 2); 
+
+            logFeedback(`Scheduling Agent: Successfully booked service for Vehicle MH12AB3456 on ${serviceTime.toLocaleDateString()}. Spare parts reserved.`, "text-lime-700 font-bold");
+
+            // After service (simulated), trigger the Manufacturing Feedback Loop (but keep LLM generation manual)
+            setTimeout(() => {
+                logFeedback(`Manufacturing Quality Insights Agent: Service data received. Ready for insight generation.`, "text-gray-600");
+                setActiveAgentPanel(insightsPanel);
+            }, 1500); 
+        }
+
+        /**
+         * LLM-POWERED FEATURE 2: Generates actionable summary for manufacturing.
+         */
+        async function generateLlmManufacturingInsight() {
+            llmInsightBtn.disabled = true;
+            llmInsightBtn.innerHTML = '<span class="spinner"></span> Analyzing...';
+
+            const systemPrompt = "You are a Quality Control Engineer. Given the field failure data, generate a single, concise, 3-point summary (using bullet points) for the Manufacturing and Design teams. Points must be actionable and relate to design, material, or assembly process improvements. Do not include any introductory or concluding sentences.";
+
+            const userQuery = `Field data from vehicle MH12AB3456 shows recurring ${predictedFailureComponent} failure, characterized by sustained high vibration (${currentVibration.toFixed(1)}μV average) and critically low oil pressure (${currentOilPressure.toFixed(1)}psi). Probability of failure was ${(predictedFailureProb * 100).toFixed(1)}%. Provide actionable insights.`;
+
+            const text = await fetchGeminiResponse(userQuery, systemPrompt, true);
+            
+            logFeedback(`Manufacturing Quality Insights Agent: **AI-GENERATED INSIGHTS**`, "text-red-900 font-bold bg-red-100 p-1 rounded");
+            logFeedback(text, "text-gray-800");
+
+            llmInsightBtn.innerHTML = '✨ Insight Generated';
+        }
+
+        /**
+         * Simulation Control: Starts the high-wear scenario.
+         */
+        function startHighWearSimulation() {
+            if(isCritical) return;
+            triggerBtn.disabled = true;
+            triggerBtn.textContent = 'Simulating Wear...';
+            logFeedback("Master Agent: Initiating high-wear simulation to test system... (Sensor data will rise/fall)", "text-indigo-600");
+
+            // Clear any existing mild fluctuation interval
+            clearInterval(sensorInterval); 
+            
+            sensorInterval = setInterval(() => {
+                // Gradually increase VIB and TEMP, and DECREASE OIL PRESSURE
+                currentVibration = Math.min(currentVibration + Math.random() * 10 + 5, 250);
+                currentTemp = Math.min(currentTemp + Math.random() * 3 + 1, 120);
+                currentOilPressure = Math.max(35, currentOilPressure - Math.random() * 2 - 1); // Pressure drops
+                updateSensorData();
+
+                if (isCritical) {
+                    // Stop the aggressive simulation loop once critical state is reached
+                    clearInterval(sensorInterval); 
+                    triggerBtn.textContent = 'Agent Triggered';
+                    triggerBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                    triggerBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                }
+            }, 1000); 
+        }
+
+        /**
+         * Resets the entire simulation to the initial state.
+         */
+        function resetSimulation() {
+            clearInterval(sensorInterval);
+            isCritical = false;
+            currentVibration = 50;
+            currentTemp = 80;
+            currentOilPressure = 70;
+            predictedFailureComponent = "";
+            predictedFailureProb = 0;
+            vibrationHistory = [];
+            tempHistory = [];
+            
+            updateSensorData();
+            updateHealthScore();
+
+            diagnosisCard.classList.add('hidden');
+            customerStateOptimal.classList.remove('hidden');
+            customerStateTriggered.classList.add('hidden');
+            customerStateScheduled.classList.add('hidden');
+            actionPlan.innerHTML = ''; 
+            llmExplanationDiv.classList.add('hidden');
+            explanationContent.textContent = '';
+
+
+            triggerBtn.disabled = false;
+            triggerBtn.textContent = 'Simulate High Wear (Trigger Agent)';
+            triggerBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            triggerBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            
+            emergencyAlertBtn.disabled = true;
+            emergencyAlertBtn.textContent = 'EMERGENCY ALERT (Disabled)';
+            emergencyAlertBtn.classList.remove('alert-pulse', 'bg-gray-400');
+            emergencyAlertBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+
+            llmDiagnosisBtn.disabled = true;
+            llmDiagnosisBtn.innerHTML = '✨ Explain Diagnosis';
+
+            llmInsightBtn.disabled = true;
+            llmInsightBtn.innerHTML = '✨ Generate Actionable Insight';
+
+            feedbackLog.innerHTML = '<li class="text-gray-500">[System]: Monitoring initial quality baseline from Plant A (Batch 2024-Q1)...</li>';
+            dataStreamLog.innerHTML = '<li class="text-gray-500">[System]: Telematics link established...</li>';
+            logFeedback("System Reset: Autonomous Predictive Maintenance Model is back in monitoring state.", "text-indigo-600");
+            
+            // Restart mild, non-critical data fluctuation
+            sensorInterval = setInterval(() => {
+                currentVibration = Math.max(40, currentVibration + (Math.random() - 0.5) * 5);
+                currentTemp = Math.max(75, currentTemp + (Math.random() - 0.5) * 2);
+                currentOilPressure = Math.max(65, currentOilPressure + (Math.random() - 0.5) * 3);
+                updateSensorData();
+            }, 3000);
+
+            // Set initial UI state
+            setActiveAgentPanel(analysisPanel);
+        }
+
+
+        // Event Listeners
+        triggerBtn.addEventListener('click', startHighWearSimulation);
+        scheduleBtn.addEventListener('click', runSchedulingAgent);
+        resetBtn.addEventListener('click', resetSimulation);
+        emergencyAlertBtn.addEventListener('click', triggerEmergencyAlert);
+        llmDiagnosisBtn.addEventListener('click', generateLlmDiagnosis);
+        llmInsightBtn.addEventListener('click', generateLlmManufacturingInsight);
+        
+        // Initial setup
+        window.onload = () => {
+            resetSimulation(); 
+            // Set canvas size dynamically for responsiveness
+            chartCanvas.width = chartCanvas.parentElement.clientWidth - 48; // Adjust for card padding
+        };
+
+        // Handle resize event to keep canvas responsive
+        window.addEventListener('resize', () => {
+            chartCanvas.width = chartCanvas.parentElement.clientWidth - 48;
+            drawChart();
+        });
+        
+    </script>
+
+</body>
+</html>
